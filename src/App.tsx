@@ -38,6 +38,14 @@ function App() {
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState<Page | null>(null)
   const [mobileNav, setMobileNav] = useState(false)
+
+  useEffect(() => {
+    document.body.classList.toggle('mobile-menu-open', mobileNav)
+
+    return () => {
+      document.body.classList.remove('mobile-menu-open')
+    }
+  }, [mobileNav])
   const [searchOpen, setSearchOpen] = useState(false)
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('blp-theme', theme) }, [theme])
   useEffect(() => {
@@ -111,7 +119,16 @@ function App() {
   const expenses = data.expenses.reduce((sum, expense) => sum + expense.amount, 0) + data.trips.reduce((sum, trip) => sum + tripDieselCost(trip) + trip.otherExpenses, 0)
   if (window.location.pathname.startsWith('/admin')) return <AdminControlCenter email={userEmail} role={userRole} data={data} />
   return <div className="app-shell">
-    <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}><div className="brand"><div className="brand-mark">BLP</div><div><strong>COMMAND</strong><span>Fleet / Operations / Finance</span></div></div><div className="sidebar-status"><span className="status-dot" /> SYSTEMS NOMINAL <b>v1.0.0</b></div><nav>{groups.map(([title, items]) => <div className="nav-group" key={title}><p className="nav-label">{title}</p>{(items as string[]).map((item) => <button className={`nav-item ${page === item ? 'active' : ''}`} key={item} onClick={() => go(item)}><span className="nav-icon">{icons[item]}</span><span>{item}</span>{page === item && <i />}</button>)}</div>)}</nav><div className="sidebar-footer"><span>BLP CONSTRUCTION</span><span>Bilaspur, CG / IN</span></div></aside>
+    <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}><div className="brand"><div className="brand-mark">BLP</div><div><strong>COMMAND</strong><span>Fleet / Operations / Finance</span></div></div><div className="sidebar-status"><span className="status-dot" /> SYSTEMS NOMINAL <b>v1.0.0</b></div><nav>{groups.map(([title, items]) => <div className="nav-group" key={title}><p className="nav-label">{title}</p>{(items as string[]).map((item) => <button className={`nav-item ${page === item ? 'active' : ''}`} key={item} onClick={() => { go(item); setMobileNav(false) }}><span className="nav-icon">{icons[item]}</span><span>{item}</span>{page === item && <i />}</button>)}</div>)}</nav><div className="sidebar-footer"><span>BLP CONSTRUCTION</span><span>Bilaspur, CG / IN</span></div></aside>
+
+{mobileNav && (
+  <button
+    type="button"
+    className="mobile-nav-overlay"
+    aria-label="Close navigation"
+    onClick={() => setMobileNav(false)}
+  />
+)}
     <main className="main-area"><header className="topbar"><button className="icon-button menu-button" onClick={() => setMobileNav(!mobileNav)}>☰</button><div className="breadcrumbs"><span>BLP COMMAND</span><b>/</b><strong>{page}</strong></div><div className="topbar-actions"><button className="search-trigger" onClick={() => setSearchOpen(true)}><span>⌕</span> Search anything <kbd>⌘ K</kbd></button><button className="icon-button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '☾' : '☀'}</button><button className="notification">♢{data.invoices.filter((invoice) => invoice.status === 'Overdue').length > 0 && <i>{data.invoices.filter((invoice) => invoice.status === 'Overdue').length}</i>}</button><div className="user-chip"><span>SP</span><div><b>{data.company.ownerName || userEmail}</b><small>{userEmail}</small></div></div></div></header>
       <div className="content"><div className="page-heading"><div><div className="eyebrow">{new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' }).format(new Date()).toUpperCase()} <span className="live"><i /> LIVE OPERATIONS</span></div><h1>{page === 'Dashboard' ? 'Command Center' : page}</h1><p>{page === 'Dashboard' ? `${data.company.ownerName || data.company.name} — here is your business at a glance.` : `Manage your ${page.toLowerCase()} records.`}</p></div><div className="heading-actions"><button className="button secondary" onClick={() => exportCsv(page, filteredRows)}>Export CSV ↓</button><button className="button primary" onClick={() => setModal(page === 'Dashboard' ? 'Trips' : page)}>＋ Add {page === 'Dashboard' ? 'trip' : page.replace(/s$/, '').toLowerCase()}</button></div></div>
         {page === 'Dashboard' ? <Dashboard data={data} revenue={revenue} expenses={expenses} companyId={companyId} onDeleted={async () => setData(await loadCompanyData(companyId))} /> : page === 'Invoices' ? <InvoiceWorkspace data={data} /> : page === 'Settings' ? <CompanySettingsForm company={data.company} onSaved={(company) => setData({ ...data, company })} /> : <Module page={page} rows={filteredRows} query={query} setQuery={setQuery} companyId={companyId} onDeleted={async () => setData(await loadCompanyData(companyId))} />}
