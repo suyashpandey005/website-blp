@@ -271,21 +271,14 @@ export function PersistedRecordModal({
 
         await customerRepository.create(companyId, {
           name: form.name.trim(),
-
           phone: form.phone.trim(),
-
-          gstin: form.gstin.trim(),
-
-          bankName: form.bankName.trim(),
-
-          bankAccountHolder: form.bankAccountHolder.trim(),
-
-          bankAccountNumber: form.bankAccountNumber.trim(),
-
-          bankIfsc: form.bankIfsc.trim(),
-
-          bankUpiId: form.bankUpiId.trim(),
-
+          date: form.date.trim(),
+          gstin: '',
+          bankName: '',
+          bankAccountHolder: '',
+          bankAccountNumber: '',
+          bankIfsc: '',
+          bankUpiId: '',
           status: 'Active',
         })
       } else if (kind === 'Invoices') {
@@ -425,12 +418,7 @@ export function PersistedRecordModal({
           ? [
               ['name', 'Customer Name'],
               ['phone', 'Phone'],
-              ['gstin', 'GSTIN'],
-              ['bankName', 'Bank Name'],
-              ['bankAccountHolder', 'Account Holder'],
-              ['bankAccountNumber', 'Account Number'],
-              ['bankIfsc', 'IFSC'],
-              ['bankUpiId', 'UPI ID'],
+              ['date', 'Date'],
             ]
           : kind === 'Invoices'
             ? [

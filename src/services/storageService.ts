@@ -28,6 +28,7 @@ export type Customer = {
   id: string
   name: string
   phone: string
+  date: string
   gstin: string
   bankName?: string
   bankAccountHolder?: string

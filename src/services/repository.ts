@@ -92,8 +92,9 @@ function mapVehicle(row: Record<string, unknown>): Vehicle { return { id: String
 function mapCustomer(row: Record<string, unknown>): Customer {
   return {
     id: String(row.id),
-    name: String(row.company_name || ''),
+    name: String(row.customer_name || ''),
     phone: String(row.phone || ''),
+    date: String(row.customer_date || ''),
     gstin: String(row.gstin || ''),
     bankName: String(row.bank_name || ''),
     bankAccountHolder: String(row.bank_account_holder || ''),
@@ -318,7 +319,7 @@ export const customerRepository = {
       .from('customer_summary')
       .select('*')
       .eq('company_id', companyId)
-      .order('company_name', { ascending: true })
+      .order('customer_name', { ascending: true })
     if (error) throw error
     return (data || []).map(mapCustomer)
   },
@@ -330,14 +331,9 @@ export const customerRepository = {
       .from('customers')
       .insert({
         company_id: companyId,
-        company_name: customer.name,
+        customer_name: customer.name,
         phone: customer.phone,
-        gstin: customer.gstin,
-        bank_name: customer.bankName || null,
-        bank_account_holder: customer.bankAccountHolder || null,
-        bank_account_number: customer.bankAccountNumber || null,
-        bank_ifsc: customer.bankIfsc || null,
-        bank_upi_id: customer.bankUpiId || null,
+        customer_date: customer.date,
         status: customer.status,
       })
       .select('*')
@@ -391,7 +387,7 @@ export const customerRepository = {
     if (error) throw error
   },
 }
-export const invoiceRepository = { async list(companyId: string) { const { data, error } = await supabase.from('invoice_summary').select('*').eq('company_id', companyId).order('invoice_date', { ascending: false }); if (error) throw error; return (data || []).map(mapInvoice) }, async create(companyId: string, invoice: { number: string; date: string; customerId: string; taxable: number; gstRate: number }) { const gst = invoice.taxable * invoice.gstRate / 100; const { error } = await supabase.from('invoices').insert({ company_id: companyId, invoice_number: invoice.number, invoice_date: invoice.date, customer_id: invoice.customerId, taxable_amount: invoice.taxable, gst_rate: invoice.gstRate, cgst: gst / 2, sgst: gst / 2, igst: 0, grand_total: invoice.taxable + gst, amount_paid: 0, status: 'Pending' }); if (error) throw error } , async remove(companyId: string, id: string) { const { error } = await supabase.from('invoices').delete().eq('company_id', companyId).eq('invoice_number', id); if (error) throw error } }
+export const invoiceRepository = { async list(companyId: string) { const { data, error } = await supabase.from('invoice_summary').select('*').eq('company_id', companyId).order('invoice_date', { ascending: false }); if (error) throw error; return (data || []).map(mapInvoice) }, async create(companyId: string, invoice: { number: string; date: string; customerId: string; taxable: number; gstRate: number }) { const gst = invoice.taxable * invoice.gstRate / 100; const { error } = await supabase.from('invoices').insert({ company_id: companyId, invoice_number: invoice.number, invoice_date: invoice.date, customer_id: invoice.customerId, taxable_amount: invoice.taxable, gst_rate: invoice.gstRate, cgst: gst / 2, sgst: gst / 2, igst: 0, grand_total: invoice.taxable + gst, amount_paid: 0, status: 'Pending' }); if (error) throw error } , async remove(companyId: string, id: string) { await deleteBusinessRecord(companyId, 'invoices', id) } }
 export const paymentRepository = {
   async list(companyId: string) {
     const { data, error } = await supabase
@@ -571,6 +567,16 @@ export const expenseRepository = {
 export const invoiceItemRepository = { async list(companyId: string, invoiceId: string) { const { data, error } = await supabase.from('invoice_items').select('*').eq('company_id', companyId).eq('invoice_id', invoiceId).order('created_at'); if (error) throw error; return (data || []).map(mapInvoiceItem) }, async create(companyId: string, item: Omit<InvoiceItem, 'id'>) { const { error } = await supabase.from('invoice_items').insert({ company_id: companyId, invoice_id: item.invoiceId, description: item.description, sac_code: item.sacCode, vehicle_equipment: item.vehicleEquipment, route_site: item.routeSite, quantity: item.quantity, unit: item.unit, rate: item.rate, taxable_amount: item.taxableAmount, tax_mode: item.taxMode, gst_rate: item.gstRate }); if (error) throw error } }
 
 export const companyRepository = { async get(companyId: string) { const { data, error } = await supabase.from('companies').select('*').eq('id', companyId).single(); if (error) throw error; return mapCompany(data) }, async update(companyId: string, settings: Partial<CompanySettings>) { const { error } = await supabase.from('companies').update({ name: settings.name, address: settings.address, phone: settings.phone, email: settings.email, gstin: settings.gstin, website: settings.website, owner_name: settings.ownerName, bank_name: settings.bankName, bank_account_holder: settings.bankAccountHolder, bank_account_number: settings.bankAccountNumber, bank_ifsc: settings.bankIfsc, upi_id: settings.upiId, payment_terms: settings.paymentTerms, invoice_terms: settings.invoiceTerms }).eq('id', companyId); if (error) throw error }, async uploadAsset(companyId: string, kind: 'logo' | 'stamp' | 'signature', file: File) { if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2_000_000) throw new Error('Use a PNG, JPG, or WEBP image under 2 MB.'); const path = `${companyId}/${kind}-${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`; const { error } = await supabase.storage.from('company-documents').upload(path, file, { upsert: false, contentType: file.type }); if (error) throw error; const column = kind === 'logo' ? 'logo_path' : kind === 'stamp' ? 'stamp_path' : 'signature_path'; const { error: updateError } = await supabase.from('companies').update({ [column]: path }).eq('id', companyId); if (updateError) throw updateError; return path }, async signedAssetUrl(path: string) { if (!path) return ''; const { data, error } = await supabase.storage.from('company-documents').createSignedUrl(path, 300); if (error) throw error; return data.signedUrl } }
+
+export async function deleteBusinessRecord(companyId: string, table: string, recordId: string) {
+  const { error } = await supabase.rpc('delete_company_record', {
+    p_company_id: companyId,
+    p_table: table,
+    p_record_id: recordId,
+  })
+
+  if (error) throw error
+}
 
 export async function loadCompanyData(
   companyId: string,
