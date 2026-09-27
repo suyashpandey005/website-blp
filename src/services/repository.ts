@@ -334,6 +334,7 @@ export const customerRepository = {
         customer_name: customer.name,
         phone: customer.phone,
         customer_date: customer.date,
+        gstin: customer.gstin,
         status: customer.status,
       })
       .select('*')

@@ -72,10 +72,13 @@ export type Expense = {
   method: PaymentMethod
   description: string
 }
-export type Data = { trips: Trip[]; vehicles: Vehicle[]; customers: Customer[]; invoices: Invoice[]; payments: Payment[]; expenses: Expense[] }
-export function makeId(prefix: string) { return `${prefix}-${Date.now().toString().slice(-6)}` }
 export function tripAmount(trip: Trip) { return trip.trips * trip.rate }
 export function tripDieselCost(trip: Trip) { return trip.diesel * trip.dieselRate }
 export function tripProfit(trip: Trip) { return tripAmount(trip) - tripDieselCost(trip) - trip.otherExpenses }
 export function formatCurrency(value: number) { return `₹${Math.round(value).toLocaleString('en-IN')}` }
-export function formatDate(value: string) { return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`)) }
+export function formatDate(value: string) {
+  if (!value) return '—'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
+}

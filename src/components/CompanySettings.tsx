@@ -1,7 +1,27 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { CompanySettings } from '../services/repository'
 import { companyRepository } from '../services/repository'
 import { supabase } from '../lib/supabase'
+
+function withDefaults(company: CompanySettings): CompanySettings {
+  return {
+    ...company,
+    name: company.name || 'BLP Construction',
+    ownerName: company.ownerName || 'Swapnil Pandey',
+    phone: company.phone || '9359022700',
+    email: company.email || 'blpconstruction55@gmail.com',
+    address:
+      company.address && !/dehradun/i.test(company.address)
+        ? company.address
+        : 'Belsari, Takhatpur, Bilaspur, Chhattisgarh – 495330',
+    bankAccountHolder:
+      company.bankAccountHolder || 'B L P CONSTRUCTION',
+    bankAccountNumber:
+      company.bankAccountNumber || '50200090912797',
+    bankIfsc: company.bankIfsc || 'HDFC0004485',
+    paymentTerms: company.paymentTerms || 'Due on receipt',
+  }
+}
 
 export function CompanySettingsForm({
   company,
@@ -10,29 +30,16 @@ export function CompanySettingsForm({
   company: CompanySettings
   onSaved: (company: CompanySettings) => void
 }) {
-  const [form, setForm] = useState<CompanySettings>(company)
+  const [form, setForm] = useState<CompanySettings>(() => withDefaults(company))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const seededCompanyId = useRef(company.id)
 
   useEffect(() => {
-    setForm({
-      ...company,
-      name: company.name || 'BLP Construction',
-      ownerName: company.ownerName || 'Swapnil Pandey',
-      phone: company.phone || '9359022700',
-      email: company.email || 'blpconstruction55@gmail.com',
-      address:
-        company.address && !/dehradun/i.test(company.address)
-          ? company.address
-          : 'Belsari, Takhatpur, Bilaspur, Chhattisgarh – 495330',
-      bankAccountHolder:
-        company.bankAccountHolder || 'B L P CONSTRUCTION',
-      bankAccountNumber:
-        company.bankAccountNumber || '50200090912797',
-      bankIfsc: company.bankIfsc || 'HDFC0004485',
-      paymentTerms: company.paymentTerms || 'Due on receipt',
-    })
+    if (company.id === seededCompanyId.current) return
+    seededCompanyId.current = company.id
+    setForm(withDefaults(company))
   }, [company])
 
   const set = (key: keyof CompanySettings, value: string) => {

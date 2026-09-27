@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { DashboardData } from '../services/repository'
 import {
@@ -11,6 +11,7 @@ import {
   vehicleRepository,
 } from '../services/repository'
 
+import { supabase } from '../lib/supabase'
 import type { TripStatus, VehicleStatus } from '../services/storageService'
 import { formatCurrency } from '../services/storageService'
 
@@ -74,6 +75,7 @@ export function PersistedRecordModal({
     number: '',
     taxable: '0',
     gstRate: '18',
+    billType: 'GST',
 
     amount: '0',
     method: 'UPI',
@@ -96,6 +98,27 @@ export function PersistedRecordModal({
   }
 
   const numeric = (key: string) => Number(form[key] || 0)
+
+  const effectiveKind =
+    kind === 'Daily Register' || kind === 'Routes' ? 'Trips'
+    : kind === 'GST Reports' ? 'Invoices'
+    : kind
+
+  useEffect(() => {
+    if (effectiveKind !== 'Invoices') return
+
+    let cancelled = false
+
+    supabase
+      .rpc('next_invoice_number', { target_company: companyId })
+      .then(({ data, error }) => {
+        if (!cancelled && !error && data) set('number', data as string)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [effectiveKind, companyId])
 
   const calculateTripQuantity = () => {
     switch (form.billingMode as BillingMode) {
@@ -127,7 +150,7 @@ export function PersistedRecordModal({
     setSaving(true)
 
     try {
-      if (kind === 'Trips') {
+      if (effectiveKind === 'Trips') {
         const vehicle = data.vehicles.find(
           (item) => item.id === form.vehicle,
         )
@@ -273,7 +296,7 @@ export function PersistedRecordModal({
           name: form.name.trim(),
           phone: form.phone.trim(),
           date: form.date.trim(),
-          gstin: '',
+          gstin: form.gstin.trim(),
           bankName: '',
           bankAccountHolder: '',
           bankAccountNumber: '',
@@ -281,16 +304,19 @@ export function PersistedRecordModal({
           bankUpiId: '',
           status: 'Active',
         })
-      } else if (kind === 'Invoices') {
+      } else if (effectiveKind === 'Invoices') {
+        const isGst = form.billType !== 'Non-GST'
+
         if (
           !form.customer ||
           !form.number.trim() ||
           numeric('taxable') <= 0 ||
-          numeric('gstRate') < 0 ||
-          numeric('gstRate') > 100
+          (isGst && (numeric('gstRate') < 0 || numeric('gstRate') > 100))
         ) {
           setError(
-            'Invoice number, customer, taxable amount, and valid GST are required.',
+            isGst
+              ? 'Invoice number, customer, taxable amount, and valid GST are required.'
+              : 'Invoice number, customer, and taxable amount are required.',
           )
           return
         }
@@ -304,7 +330,7 @@ export function PersistedRecordModal({
 
           taxable: numeric('taxable'),
 
-          gstRate: numeric('gstRate'),
+          gstRate: isGst ? numeric('gstRate') : 0,
         })
       } else if (kind === 'Payments') {
         if (
@@ -372,9 +398,9 @@ export function PersistedRecordModal({
       await onSaved()
 
       close()
-    } catch (error: any) {
+    } catch (error) {
   console.error('SAVE ERROR:', error)
-  setError(error?.message || JSON.stringify(error) || 'Unable to save the record.')
+  setError(error instanceof Error ? error.message : 'Unable to save the record.')
 
     } finally {
       setSaving(false)
@@ -407,7 +433,7 @@ export function PersistedRecordModal({
           ['licenseNumber', 'License Number'],
           ['licenseExpiry', 'License Expiry'],
         ]
-      : kind === 'Trips'
+      : effectiveKind === 'Trips'
         ? tripFields
       : kind === 'Fleet'
         ? [
@@ -418,13 +444,13 @@ export function PersistedRecordModal({
           ? [
               ['name', 'Customer Name'],
               ['phone', 'Phone'],
-              ['date', 'Date'],
+              ['gstin', 'GSTIN (optional)'],
             ]
-          : kind === 'Invoices'
+          : effectiveKind === 'Invoices'
             ? [
                 ['number', 'Invoice number'],
                 ['taxable', 'Taxable amount'],
-                ['gstRate', 'GST rate'],
+                ...(form.billType === 'Non-GST' ? [] : [['gstRate', 'GST rate']]),
               ]
             : kind === 'Payments'
               ? [
@@ -493,8 +519,8 @@ export function PersistedRecordModal({
             />
           </label>
 
-          {(kind === 'Trips' ||
-            kind === 'Invoices' ||
+          {(effectiveKind === 'Trips' ||
+            effectiveKind === 'Invoices' ||
             kind === 'Payments') && (
             <label>
               Customer
@@ -521,7 +547,7 @@ export function PersistedRecordModal({
             </label>
           )}
 
-          {kind === 'Trips' && (
+          {effectiveKind === 'Trips' && (
             <>
               <label>
                 Vehicle
@@ -720,6 +746,22 @@ export function PersistedRecordModal({
             </label>
           )}
 
+          {effectiveKind === 'Invoices' && (
+            <label>
+              Bill Type
+
+              <select
+                value={form.billType}
+                onChange={(event) =>
+                  set('billType', event.target.value)
+                }
+              >
+                <option value="GST">GST</option>
+                <option value="Non-GST">Non-GST</option>
+              </select>
+            </label>
+          )}
+
           {fields.map(([key, label]) => {
             if (kind === 'Payments' && key === 'invoice') {
               return (
@@ -810,7 +852,7 @@ export function PersistedRecordModal({
             )
           })}
 
-          {kind === 'Trips' && (
+          {effectiveKind === 'Trips' && (
             <>
               <label>
                 Fuel consumed (litres)
@@ -905,7 +947,7 @@ export function PersistedRecordModal({
           )}
         </div>
 
-        {kind === 'Trips' && (
+        {effectiveKind === 'Trips' && (
           <div className="calc-preview">
             Billing:
             {' '}

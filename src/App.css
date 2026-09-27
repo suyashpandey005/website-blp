@@ -399,9 +399,6 @@ svg {
     position: fixed !important;
     inset: 0 !important;
 
-    width: 100vw !important;
-    height: 100dvh !important;
-
     padding: 0 !important;
     margin: 0 !important;
 
@@ -452,4 +449,161 @@ svg {
     position: fixed !important;
     width: 100% !important;
   }
+}
+
+/* =========================================================
+   BLP COMMAND — SMOOTH MOTION LAYER
+   Pure additions: no existing rule above is modified or
+   removed. Every decorative loop respects reduced-motion.
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* ---- Smooth, consistent hover/focus feedback ---- */
+
+.nav-item,
+.icon-button,
+.notification,
+.table-action,
+.panel-heading button,
+select,
+input,
+textarea {
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.button {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .12s ease;
+}
+
+.button:active,
+.icon-button:active {
+  transform: scale(.96);
+}
+
+.button.primary:hover { background: #d5960f; border-color: #d5960f; }
+.button.secondary:hover { background: rgba(0,0,0,.045); color: var(--ink); }
+:root[data-theme=dark] .button.secondary:hover { background: rgba(255,255,255,.06); }
+
+.form-grid input:focus,
+.form-grid select:focus,
+.module-toolbar > input:focus,
+.command-input input:focus {
+  box-shadow: 0 0 0 3px rgba(229,161,27,.15);
+}
+
+tbody tr {
+  transition: background-color .15s ease;
+}
+tbody tr:hover {
+  background: rgba(229,161,27,.06);
+}
+:root[data-theme=dark] tbody tr:hover {
+  background: rgba(229,161,27,.09);
+}
+
+.stat-card {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0,0,0,.08);
+}
+
+/* Sidebar active indicator slides in instead of snapping */
+.nav-item:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 19px;
+  background: var(--amber);
+  opacity: 0;
+  transform: scaleY(.4);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.nav-item.active:before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* ---- Modal entrance ---- */
+
+.modal-backdrop {
+  animation: blpFadeIn .16s ease both;
+}
+.form-modal,
+.command-modal {
+  animation: blpModalIn .22s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes blpFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes blpModalIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Page content settles in on every navigation ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-heading,
+  .hero-strip,
+  .stats-grid,
+  .dashboard-grid > *,
+  .module-panel,
+  .invoice-workspace,
+  .settings-workspace {
+    animation: blpFadeUp .35s ease both;
+  }
+  .dashboard-grid > *:nth-child(1) { animation-delay: .05s; }
+  .dashboard-grid > *:nth-child(2) { animation-delay: .09s; }
+}
+
+@keyframes blpFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Live status pulse ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .status-dot,
+  .live i {
+    animation: blpPulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes blpPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94,179,133,.45); }
+  50% { box-shadow: 0 0 0 4px rgba(94,179,133,0); }
+}
+
+/* ---- Fleet-in-motion: the dashboard route marker travels the line
+   (the two dots + diamond already existed in the markup; this gives
+   the diamond a route to travel and anchors the end dot on the right) ---- */
+
+.route-line i:last-child {
+  left: auto;
+  right: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .route-line b {
+    animation: blpRouteTravel 3.4s ease-in-out infinite;
+  }
+}
+
+@keyframes blpRouteTravel {
+  0%   { left: 2px; box-shadow: 0 0 5px 1px rgba(229,161,27,.45); }
+  50%  { left: calc(100% - 12px); box-shadow: 0 0 9px 2px rgba(229,161,27,.65); }
+  100% { left: 2px; box-shadow: 0 0 5px 1px rgba(229,161,27,.45); }
 }
